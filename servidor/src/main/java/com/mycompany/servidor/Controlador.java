@@ -1,14 +1,19 @@
 package com.mycompany.servidor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Controlador {
     private Vista vista;
     private Servidor servidor;
+    private List<String> clientesConectados;
+    private int contadorClientes;
 
     public Controlador(Vista vista, Servidor servidor) {
         this.vista = vista;
         this.servidor = servidor;
-
-        // Configurar los eventos de la vista
+        this.clientesConectados = new ArrayList<>();
+        this.contadorClientes = 1;
         this.vista.setControlador(this);
     }
 
@@ -20,9 +25,18 @@ public class Controlador {
     public void detenerServidor() {
         vista.mostrarMensaje("Deteniendo servidor...");
         servidor.detenerServidor();
+        clientesConectados.clear();
+        vista.actualizarListaClientes(clientesConectados);
     }
 
-    public void recibirMensaje(String mensaje) {
-        vista.mostrarMensaje("Cliente: " + mensaje);
+    public void agregarCliente() {
+        String cliente = "Cliente " + contadorClientes++;
+        clientesConectados.add(cliente);
+        vista.actualizarListaClientes(clientesConectados);
+    }
+
+    public void eliminarCliente(String cliente) {
+        clientesConectados.remove(cliente);
+        vista.actualizarListaClientes(clientesConectados);
     }
 }
