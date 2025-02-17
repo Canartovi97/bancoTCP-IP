@@ -78,7 +78,8 @@ class ClientHandler extends Thread {
             String mensaje;
             while ((mensaje = in.readLine()) != null) {
                 listener.mostrarMensaje(clienteNombre + ": " + mensaje);
-                out.println("Mensaje recibido en el servidor");
+                String respuesta = BaseDatos.consultarSaldo(mensaje);
+                out.println(respuesta);
             }
         } catch (IOException e) {
             listener.mostrarMensaje("Error en cliente " + clienteNombre + ": " + e.getMessage());
