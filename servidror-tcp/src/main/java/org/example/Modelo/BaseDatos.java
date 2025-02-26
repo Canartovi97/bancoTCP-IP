@@ -7,15 +7,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class BaseDatos {
-    private  final String URL = "jdbc:postgresql://localhost:5432/banco_db";
-    private  final String USUARIO = "postgres";
-    private  final String PASSWORD = "123456";
+    private static final String URL = "jdbc:postgresql://dpg-cuv9e6a3esus73bn0r8g-a.oregon-postgres.render.com:5432/distribuidos_3x52";
+    private static final String USUARIO = "distribuidos_3x52_user";
+    private static final String PASSWORD = "FRk8FC6h0IDPe9Gg2kPuUK4iFYWE6STP";
 
-    public  Connection conectar() throws SQLException {
+    public Connection conectar() throws SQLException {
         return DriverManager.getConnection(URL, USUARIO, PASSWORD);
     }
 
-    public  String consultarSaldo(String input) {
+    public String consultarSaldo(String input) {
         String query = "SELECT nombre, saldo FROM clientes WHERE numero_cuenta = ? OR numero_identificacion = ?";
         try (Connection conn = conectar();
              PreparedStatement stmt = conn.prepareStatement(query)) {
