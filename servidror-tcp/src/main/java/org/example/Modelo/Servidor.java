@@ -146,30 +146,33 @@ class ClientHandler extends Thread {
     private boolean manejarAutenticacion() throws IOException {
         out.println("Ingrese usuario y contraseña separados por espacio:");
         String mensaje = in.readLine();
+
         if (mensaje != null) {
             System.out.println("Servidor recibió (login): [" + mensaje + "]");
             String[] partes = mensaje.trim().split("\\s+");
+
             if (partes.length == 2) {
                 String username = partes[0];
                 String password = partes[1];
-                boolean autenticado = consultas.verificarCredenciales(username, password);
-                if (autenticado) {
+
+
+                String[] resultado = consultas.obtenerDatosUsuario(username, password);
+
+                if (resultado != null) {
+                    String idUsuario = resultado[0];
+                    String numeroCuenta = resultado[1];
+
                     System.out.println("Servidor autenticó correctamente a: " + username);
-                    out.println("LOGIN_EXITO " + username);
-                    if (listener != null) {
-                        listener.mostrarMensaje("Usuario autenticado: " + username);
-                    }
+                    out.println("LOGIN_EXITO " + idUsuario + " " + numeroCuenta);
                     return true;
                 } else {
                     System.out.println("Servidor: Credenciales incorrectas");
                     out.println("LOGIN_FALLIDO");
-                    if (listener != null) {
-                        listener.mostrarMensaje("Credenciales incorrectas para: " + username);
-                    }
                     return false;
                 }
             }
         }
+
         System.out.println("Servidor: Formato de mensaje inválido");
         out.println("ERROR: Formato inválido");
         return false;

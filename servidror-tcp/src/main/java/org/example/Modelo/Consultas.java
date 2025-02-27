@@ -40,6 +40,34 @@ public class Consultas {
         }
     }
 
+
+    public String[] obtenerDatosUsuario(String username, String password) {
+        String query = "SELECT u.id_usuario, c.numero_cuenta " +
+                "FROM Usuarios u " +
+                "INNER JOIN Cuentas c ON u.id_persona = c.id_persona " +
+                "WHERE u.username = ? AND u.password = ? LIMIT 1";
+
+        try (Connection conn = baseDatos.conectar();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                String idUsuario = rs.getString("id_usuario");
+                String numeroCuenta = rs.getString("numero_cuenta");
+                return new String[]{idUsuario, numeroCuenta};
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al obtener datos del usuario: " + e.getMessage());
+        }
+        return null;
+    }
+
+
+
     public String consultarSaldo(String numeroCuenta) {
         String query = "SELECT numero_cuenta, saldo FROM Cuentas WHERE numero_cuenta = ?";
 
