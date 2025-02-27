@@ -16,13 +16,13 @@ public class Servidor {
     private ServerSocket serverSocket;
     private boolean running;
     private final int PORT = 12345;
-    private Listener listener;
+    private Listener listener; // Puede ser null en modo headless
     private List<String> clientesConectados;
     private int contadorClientes;
     private Consultas consultas;
 
-    public Servidor(Vista listener) {
-        this.listener = listener;
+    public Servidor(Listener listener) {
+        this.listener = listener; // Puede ser null en modo headless
         this.clientesConectados = new ArrayList<>();
         this.contadorClientes = 1;
         this.consultas = new Consultas();
@@ -32,17 +32,31 @@ public class Servidor {
         new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(PORT);
-                listener.mostrarMensaje("Servidor TCP en ejecución en puerto " + PORT);
+                if (listener != null) {
+                    listener.mostrarMensaje("Servidor TCP en ejecución en puerto " + PORT);
+                } else {
+                    System.out.println("Servidor TCP en ejecución en puerto " + PORT);
+                }
                 running = true;
                 while (running) {
                     Socket clientSocket = serverSocket.accept();
                     String clienteNombre = "Cliente " + contadorClientes++;
                     clientesConectados.add(clienteNombre);
-                    listener.actualizarListaClientes(clientesConectados);
+
+                    if (listener != null) {
+                        listener.actualizarListaClientes(clientesConectados);
+                    } else {
+                        System.out.println("Cliente conectado: " + clienteNombre);
+                    }
+
                     new ClientHandler(clientSocket, listener, clienteNombre, consultas).start();
                 }
             } catch (IOException e) {
-                listener.mostrarMensaje("Error en el servidor: " + e.getMessage());
+                if (listener != null) {
+                    listener.mostrarMensaje("Error en el servidor: " + e.getMessage());
+                } else {
+                    System.err.println("Error en el servidor: " + e.getMessage());
+                }
             }
         }).start();
     }
@@ -54,10 +68,19 @@ public class Servidor {
                 serverSocket.close();
             }
             clientesConectados.clear();
-            listener.actualizarListaClientes(clientesConectados);
-            listener.mostrarMensaje("Servidor detenido.");
+
+            if (listener != null) {
+                listener.actualizarListaClientes(clientesConectados);
+                listener.mostrarMensaje("Servidor detenido.");
+            } else {
+                System.out.println("Servidor detenido.");
+            }
         } catch (IOException e) {
-            listener.mostrarMensaje("Error al detener el servidor: " + e.getMessage());
+            if (listener != null) {
+                listener.mostrarMensaje("Error al detener el servidor: " + e.getMessage());
+            } else {
+                System.err.println("Error al detener el servidor: " + e.getMessage());
+            }
         }
     }
 }
@@ -107,29 +130,34 @@ class ClientHandler extends Thread {
     private boolean manejarAutenticacion() throws IOException {
         out.println("Ingrese usuario y contraseña separados por espacio:");
         String mensaje = in.readLine();
-
         if (mensaje != null) {
             System.out.println("Servidor recibió (login): [" + mensaje + "]");
             String[] partes = mensaje.trim().split("\\s+");
-
             if (partes.length == 2) {
                 String username = partes[0];
                 String password = partes[1];
-
                 boolean autenticado = consultas.verificarCredenciales(username, password);
-
                 if (autenticado) {
                     System.out.println("Servidor autenticó correctamente a: " + username);
                     out.println("LOGIN_EXITO " + username);
+
+                    if (listener != null) {
+                        listener.mostrarMensaje("Usuario autenticado: " + username);
+                    }
+
                     return true;
                 } else {
                     System.out.println("Servidor: Credenciales incorrectas");
                     out.println("LOGIN_FALLIDO");
+
+                    if (listener != null) {
+                        listener.mostrarMensaje("Credenciales incorrectas para: " + username);
+                    }
+
                     return false;
                 }
             }
         }
-
         System.out.println("Servidor: Formato de mensaje inválido");
         out.println("ERROR: Formato inválido");
         return false;
@@ -138,10 +166,8 @@ class ClientHandler extends Thread {
 
     private void manejarComandos() throws IOException {
         String mensaje;
-
         while ((mensaje = in.readLine()) != null) {
             System.out.println("Servidor recibió: [" + mensaje + "]");
-
             if (mensaje.startsWith("CONSULTAR_SALDO")) {
                 manejarConsultaSaldo(mensaje);
             } else if (mensaje.startsWith("CONSIGNAR")) {
@@ -149,6 +175,10 @@ class ClientHandler extends Thread {
             } else {
                 System.out.println("Servidor: Comando no reconocido [" + mensaje + "]");
                 out.println("ERROR: Comando no reconocido.");
+
+                if (listener != null) {
+                    listener.mostrarMensaje("Comando no reconocido: " + mensaje);
+                }
             }
         }
     }

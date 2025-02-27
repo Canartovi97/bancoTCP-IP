@@ -17,29 +17,57 @@ public class Controlador {
         this.servidor = servidor;
         this.clientesConectados = new ArrayList<>();
         this.contadorClientes = 1;
-        this.vista.setControlador(this);
+
+        // Configurar la vista solo si no es null
+        if (this.vista != null) {
+            this.vista.setControlador(this);
+        }
     }
 
     public void iniciarServidor() {
-        vista.mostrarMensaje("Iniciando servidor...");
+        if (vista != null) {
+            vista.mostrarMensaje("Iniciando servidor...");
+        } else {
+            System.out.println("Iniciando servidor...");
+        }
         servidor.iniciarServidor();
     }
 
     public void detenerServidor() {
-        vista.mostrarMensaje("Deteniendo servidor...");
+        if (vista != null) {
+            vista.mostrarMensaje("Deteniendo servidor...");
+            clientesConectados.clear();
+            vista.actualizarListaClientes(clientesConectados);
+        } else {
+            System.out.println("Deteniendo servidor...");
+            clientesConectados.clear();
+        }
         servidor.detenerServidor();
-        clientesConectados.clear();
-        vista.actualizarListaClientes(clientesConectados);
     }
 
     public void agregarCliente() {
         String cliente = "Cliente " + contadorClientes++;
         clientesConectados.add(cliente);
-        vista.actualizarListaClientes(clientesConectados);
+
+        if (vista != null) {
+            vista.actualizarListaClientes(clientesConectados);
+        } else {
+            System.out.println("Cliente conectado: " + cliente);
+        }
     }
 
     public void eliminarCliente(String cliente) {
         clientesConectados.remove(cliente);
-        vista.actualizarListaClientes(clientesConectados);
+
+        if (vista != null) {
+            vista.actualizarListaClientes(clientesConectados);
+        } else {
+            System.out.println("Cliente desconectado: " + cliente);
+        }
+    }
+
+    public void iniciarServidorHeadless() {
+        System.out.println("Iniciando servidor en modo headless...");
+        servidor.iniciarServidor();
     }
 }
