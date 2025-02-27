@@ -25,7 +25,7 @@ public class Vista extends JFrame implements Listener {
         setSize(600, 400);
         setLocationRelativeTo(null);
         
-        jButton2 = new JButton("Iniciar");
+        //jButton2 = new JButton("Iniciar");
         jButton3 = new JButton("Apagar");
         jLabel1 = new JLabel("Servidor Banco TCP/IP", SwingConstants.CENTER);
         jLabel2 = new JLabel("Dispositivos Conectados");
@@ -41,30 +41,34 @@ public class Vista extends JFrame implements Listener {
         setLayout(null);
         
         jLabel1.setBounds(150, 10, 300, 30);
-        jButton2.setBounds(50, 50, 200, 30);
-        jButton3.setBounds(300, 50, 200, 30);
+        //jButton2.setBounds(50, 50, 200, 30);
+        jButton3.setBounds(200, 50, 200, 30);
         jLabel2.setBounds(50, 100, 200, 20);
         jLabel3.setBounds(300, 100, 200, 20);
         jScrollPane1.setBounds(50, 130, 200, 200);
         jScrollPane2.setBounds(300, 130, 250, 200);
 
         add(jLabel1);
-        add(jButton2);
+        //add(jButton2);
         add(jButton3);
         add(jLabel2);
         add(jLabel3);
         add(jScrollPane1);
         add(jScrollPane2);
         
-        jButton2.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                if (controlador != null) controlador.iniciarServidor();
-            }
-        });
+        //jButton2.addActionListener(new ActionListener() {
+            //public void actionPerformed(ActionEvent evt) {
+                //if (controlador != null) controlador.iniciarServidor();
+            //}
+        //});
 
         jButton3.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
-                if (controlador != null) controlador.detenerServidor();
+                if (controlador != null) {
+                    controlador.detenerServidor();
+                }
+                dispose();
+                System.exit(0);
             }
         });
     }
@@ -93,7 +97,7 @@ public class Vista extends JFrame implements Listener {
         });
     }
 
-    private JButton jButton2;
+    //private JButton jButton2;
     private JButton jButton3;
     private JLabel jLabel1;
     private JLabel jLabel2;

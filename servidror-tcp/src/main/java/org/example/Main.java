@@ -14,6 +14,14 @@ public class Main {
             org.example.Controlador.Controlador controlador = new Controlador(vista, servidor);
             vista.setControlador(controlador);
             vista.setVisible(true);
+
+            if (controlador != null) {
+                try {
+                    controlador.iniciarServidor();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         });
 
 
