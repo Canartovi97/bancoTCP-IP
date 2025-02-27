@@ -5,8 +5,7 @@ import org.example.Modelo.Servidor;
 
 public class MainHeadless {
     public static void main(String[] args) {
-        // Iniciar el servidor en modo headless
-        Servidor servidor = new Servidor(null); // Sin vista
+        Servidor servidor = new Servidor(null);
         Controlador controlador = new Controlador(null, servidor);
         controlador.iniciarServidorHeadless();
     }

@@ -18,7 +18,6 @@ public class Controlador {
         this.clientesConectados = new ArrayList<>();
         this.contadorClientes = 1;
 
-        // Configurar la vista solo si no es null
         if (this.vista != null) {
             this.vista.setControlador(this);
         }

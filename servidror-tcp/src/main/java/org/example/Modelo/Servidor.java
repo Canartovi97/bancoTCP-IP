@@ -16,13 +16,13 @@ public class Servidor {
     private ServerSocket serverSocket;
     private boolean running;
     private final int PORT = 12345;
-    private Listener listener; // Puede ser null en modo headless
+    private Listener listener;
     private List<String> clientesConectados;
     private int contadorClientes;
     private Consultas consultas;
 
     public Servidor(Listener listener) {
-        this.listener = listener; // Puede ser null en modo headless
+        this.listener = listener;
         this.clientesConectados = new ArrayList<>();
         this.contadorClientes = 1;
         this.consultas = new Consultas();
