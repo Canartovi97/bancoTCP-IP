@@ -144,6 +144,11 @@ class ClientHandler extends Thread {
 
             if (mensaje.startsWith("CONSULTAR_SALDO")) {
                 manejarConsultaSaldo(mensaje);
+            } else if (mensaje.startsWith("CONSIGNAR")) {
+                manejarConsignacion(mensaje);
+            } else {
+                System.out.println("Servidor: Comando no reconocido [" + mensaje + "]");
+                out.println("ERROR: Comando no reconocido.");
             }
         }
     }
@@ -165,6 +170,36 @@ class ClientHandler extends Thread {
         }
     }
 
+
+
+    private void manejarConsignacion(String mensaje) {
+        String[] partes = mensaje.split("\\s+");
+
+        if (partes.length != 3) {
+            out.println("ERROR: Formato de consignación inválido.");
+            return;
+        }
+
+        String cuentaDestino = partes[1];
+        double monto;
+
+        try {
+            monto = Double.parseDouble(partes[2]);
+        } catch (NumberFormatException e) {
+            out.println("ERROR: Monto inválido.");
+            return;
+        }
+
+        System.out.println("Servidor: Procesando consignación a " + cuentaDestino + " por $" + monto);
+
+        boolean exito = consultas.realizarConsignacion(cuentaDestino, monto);
+
+        if (exito) {
+            out.println("CONSIGNACION_EXITOSA " + cuentaDestino + " $" + monto);
+        } else {
+            out.println("ERROR: No se pudo realizar la consignación.");
+        }
+    }
 
 
 

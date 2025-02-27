@@ -62,4 +62,33 @@ public class Consultas {
             return "Error en la consulta de saldo: " + e.getMessage();
         }
     }
+
+
+
+    public boolean realizarConsignacion(String cuentaDestino, double monto) {
+        String query = "UPDATE Cuentas SET saldo = saldo + ? WHERE numero_cuenta = ?";
+
+        try (Connection conn = baseDatos.conectar();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setDouble(1, monto);
+            stmt.setString(2, cuentaDestino);
+
+            int filasAfectadas = stmt.executeUpdate();
+
+            if (filasAfectadas > 0) {
+                System.out.println("Servidor: Consignación exitosa en cuenta " + cuentaDestino);
+                return true;
+            } else {
+                System.out.println("Servidor: No se encontró la cuenta " + cuentaDestino);
+                return false;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error en la consignación: " + e.getMessage());
+            return false;
+        }
+    }
+
+
+
 }
