@@ -230,6 +230,10 @@ public class Servidor {
             }
 
             String respuesta = consultas.consultarSaldo(username, tipo, numero);
+            // Verificar si la respuesta está vacía
+            System.out.println("[Servidor] Enviando respuesta al cliente: " + respuesta);
+
+            // Enviar respuesta al cliente
             out.println(respuesta);
         }
 

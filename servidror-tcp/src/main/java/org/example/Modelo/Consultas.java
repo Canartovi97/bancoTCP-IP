@@ -81,25 +81,34 @@ public class Consultas {
                 "INNER JOIN Usuarios u ON p.id_persona = u.id_persona " +
                 "WHERE u.username = ? AND p.documento = ?";
 
-        StringBuilder resultado = new StringBuilder("Cuentas y saldos:\n");
         try (Connection conn = baseDatos.conectar();
              PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setString(1, username);
             stmt.setString(2, documento);
 
             ResultSet rs = stmt.executeQuery();
-            boolean encontrado = false;
+            StringBuilder resultado = new StringBuilder("Cuentas y saldos:");
+
             while (rs.next()) {
-                encontrado = true;
                 String cuenta = rs.getString("numero_cuenta");
                 double saldo = rs.getDouble("saldo");
-                resultado.append("Cuenta: ").append(cuenta).append(" - Saldo: $").append(saldo).append("\n");
+
+
+                resultado.append(" \\n Cuenta: ").append(cuenta)
+                        .append(" | Saldo: $").append(saldo);
             }
-            return encontrado ? resultado.toString() : "ERROR: No se encontraron cuentas para este documento.";
+
+            String respuestaFinal = resultado.toString();
+            System.out.println("[Consultas] Respuesta enviada al cliente: " + respuestaFinal);
+            return respuestaFinal;
+
         } catch (SQLException e) {
-            return "ERROR en la consulta de saldo: " + e.getMessage();
+            return "ERROR en la consulta de saldo por cédula: " + e.getMessage();
         }
     }
+
+
 
 
 
