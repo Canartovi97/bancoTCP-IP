@@ -8,24 +8,27 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Servidor {
     private ServerSocket serverSocket;
     private boolean running;
     private final int PORT = 12345;
+
     private Listener listener;
     private List<String> clientesConectados;
-    private int contadorClientes;
-    private Consultas consultas;
 
+
+
+    private static final List<String> autenticados = Collections.synchronizedList(new ArrayList<>());
+
+
+    private Consultas consultas;
     private List<ClientHandler> clientHandlers;
 
     public Servidor(Listener listener) {
         this.listener = listener;
         this.clientesConectados = new ArrayList<>();
-        this.contadorClientes = 1;
         this.consultas = new Consultas();
         this.clientHandlers = new ArrayList<>();
     }
@@ -34,17 +37,23 @@ public class Servidor {
         new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(PORT);
-                listener.mostrarMensaje("Servidor TCP en ejecución en puerto " + PORT);
-
                 running = true;
+
+                if (listener != null) {
+                    listener.mostrarMensaje("Servidor TCP en ejecución en puerto " + PORT);
+                } else {
+                    System.out.println("Servidor TCP en ejecución en puerto " + PORT);
+                }
+
                 while (running) {
                     Socket clientSocket = serverSocket.accept();
-                    String clienteNombre = "Cliente ";
+
+                    String clienteNombre = "Cliente-" + (clientHandlers.size() + 1);
                     clientesConectados.add(clienteNombre);
                     if (listener != null) {
                         listener.actualizarListaClientes(clientesConectados);
                     } else {
-                        System.out.println("Cliente conectado: " + clienteNombre);
+                        System.out.println("Nuevo cliente conectado: " + clienteNombre);
                     }
 
                     ClientHandler clientHandler = new ClientHandler(clientSocket, listener, clienteNombre, consultas);
@@ -66,15 +75,13 @@ public class Servidor {
         try {
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
-                System.out.println("ServerSocket cerrado.");
             }
-
             for (ClientHandler handler : clientHandlers) {
                 handler.detener();
             }
             clientHandlers.clear();
-
             clientesConectados.clear();
+
             if (listener != null) {
                 listener.actualizarListaClientes(clientesConectados);
                 listener.mostrarMensaje("Servidor detenido.");
@@ -89,147 +96,163 @@ public class Servidor {
             }
         }
     }
-}
 
-class ClientHandler extends Thread {
-    private Socket socket;
-    private BufferedReader in;
-    private PrintWriter out;
-    private Listener listener;
-    private String clienteNombre;
-    private Consultas consultas;
-    private volatile boolean running;
+    /**
+     * ClientHandler interno que maneja login + comandos.
+     * Usa la estructura 'autenticados' para verificar si un user ya está logueado.
+     */
+    class ClientHandler extends Thread {
+        private Socket socket;
+        private BufferedReader in;
+        private PrintWriter out;
+        private Listener listener;
+        private String clienteNombre;
+        private Consultas consultas;
+        private volatile boolean running = true;
 
-    public ClientHandler(Socket socket, Listener listener, String clienteNombre, Consultas consultas) {
-        this.socket = socket;
-        this.listener = listener;
-        this.clienteNombre = clienteNombre;
-        this.consultas = consultas;
-        this.running = true;
-    }
+        public ClientHandler(Socket socket, Listener listener, String clienteNombre, Consultas consultas) {
+            this.socket = socket;
+            this.listener = listener;
+            this.clienteNombre = clienteNombre;
+            this.consultas = consultas;
+        }
 
-    @Override
-    public void run() {
-        try {
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream(), true);
+        @Override
+        public void run() {
+            try {
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                out = new PrintWriter(socket.getOutputStream(), true);
 
-            boolean autenticado = manejarAutenticacion();
-            if (!autenticado) {
-                socket.close();
+                manejarAutenticacion();
+                manejarComandos();
+
+            } catch (IOException e) {
+                System.out.println("[ClientHandler] Error: " + e.getMessage());
+            } finally {
+                detener();
+            }
+        }
+
+        public void detener() {
+            running = false;
+            try {
+                if (socket != null && !socket.isClosed()) {
+                    socket.close();
+                }
+            } catch (IOException ignored) {}
+        }
+
+        /**
+         * Maneja la lógica de login con un approach:
+         * 1) Recibe "LOGIN user pass"
+         * 2) Si user ya está en 'autenticados', responde "USUARIO_YA_AUTENTICADO".
+         * 3) Sino, verifica en BD, si OK -> "LOGIN_EXITO", y añade a 'autenticados'.
+         * 4) Si falla -> "LOGIN_FALLIDO"
+         */
+
+
+        private void manejarAutenticacion() throws IOException {
+            String mensaje = in.readLine();
+            if (mensaje == null) {
+                out.println("ERROR: No llega mensaje de login.");
+                throw new IOException("No llega mensaje de login.");
+            }
+            System.out.println("el servidor recibe  (login): [" + mensaje + "]");
+
+            String[] partes = mensaje.trim().split("\\s+");
+
+            if (partes.length == 3 && partes[0].equalsIgnoreCase("LOGIN")) {
+                String user = partes[1];
+                String pass = partes[2];
+
+
+                if (autenticados.contains(user)) {
+                    System.out.println("Error el  usuario ya esta autenticado: " + user);
+                    out.println("USUARIO_YA_AUTENTICADO");
+                    return;
+                }
+
+                // 2) Verificar en BD
+                boolean ok = consultas.verificarCredenciales(user, pass);
+                if (ok) {
+                    autenticados.add(user);
+                    System.out.println("Usuario autenticado: " + user);
+                    out.println("LOGIN_EXITO");
+
+
+                } else {
+                    System.out.println("[ClientHandler] Credenciales incorrectas: " + user);
+                    out.println("LOGIN_FALLIDO");
+
+                }
+            } else {
+                out.println("ERROR: Formato de login inválido. Use: LOGIN <user> <pass>");
+                throw new IOException("Formato de login inválido");
+            }
+        }
+
+
+        private void manejarComandos() throws IOException {
+            String linea;
+            while (running && (linea = in.readLine()) != null) {
+                System.out.println("[ClientHandler] Recibido comando: [" + linea + "]");
+
+                if (linea.startsWith("CONSULTAR_SALDO")) {
+                    manejarConsultaSaldo(linea);
+
+                } else if (linea.startsWith("CONSIGNAR")) {
+                    manejarConsignacion(linea);
+
+                } else {
+                    System.out.println("[ClientHandler] Comando no reconocido: [" + linea + "]");
+                    out.println("ERROR: Comando no reconocido.");
+                }
+            }
+        }
+
+
+
+        private void manejarConsultaSaldo(String mensaje) {
+            String[] partes = mensaje.trim().split("\\s+");
+
+            if (partes.length != 4) {
+                out.println("ERROR: Formato inválido. Use: CONSULTAR_SALDO <username> <numero> <CUENTA|CEDULA>");
                 return;
             }
 
-            manejarComandos();
-        } catch (IOException e) {
-            System.out.println("Error en cliente: " + e.getMessage());
-        } finally {
+            String username = partes[1]; // Usuario autenticado
+            String numero = partes[2];   // Número ingresado (cuenta o cédula)
+            String tipo = partes[3];     // Tipo de consulta (CUENTA o CEDULA)
+
+            if (!autenticados.contains(username)) {
+                out.println("ERROR: Usuario no autenticado.");
+                return;
+            }
+
+            String respuesta = consultas.consultarSaldo(username, tipo, numero);
+            out.println(respuesta);
+        }
+
+        private void manejarConsignacion(String linea) {
+            String[] partes = linea.trim().split("\\s+");
+            if (partes.length != 3) {
+                out.println("ERROR: Formato consignación inválido. Use: CONSIGNAR <cuenta> <monto>");
+                return;
+            }
+            String cuentaDestino = partes[1];
+            double monto;
             try {
-                socket.close();
-            } catch (IOException e) {
-                System.out.println("Error cerrando cliente: " + e.getMessage());
+                monto = Double.parseDouble(partes[2]);
+            } catch (NumberFormatException e) {
+                out.println("ERROR: Monto inválido.");
+                return;
             }
-        }
-    }
-
-    public void detener() {
-        running = false;
-        try {
-            if (socket != null && !socket.isClosed()) {
-                socket.close();
-            }
-        } catch (IOException e) {
-            System.out.println("Error al detener el cliente: " + e.getMessage());
-        }
-    }
-
-    private boolean manejarAutenticacion() throws IOException {
-        out.println("Ingrese usuario y contraseña separados por espacio:");
-        String mensaje = in.readLine();
-
-        if (mensaje != null) {
-            System.out.println("Servidor recibió (login): [" + mensaje + "]");
-            String[] partes = mensaje.trim().split("\\s+");
-
-            if (partes.length == 2) {
-                String username = partes[0];
-                String password = partes[1];
-
-
-                String[] resultado = consultas.obtenerDatosUsuario(username, password);
-
-                if (resultado != null) {
-                    String idUsuario = resultado[0];
-                    String numeroCuenta = resultado[1];
-
-                    System.out.println("Servidor autenticó correctamente a: " + username);
-                    out.println("LOGIN_EXITO " + idUsuario + " " + numeroCuenta);
-                    return true;
-                } else {
-                    System.out.println("Servidor: Credenciales incorrectas");
-                    out.println("LOGIN_FALLIDO");
-                    return false;
-                }
-            }
-        }
-
-        System.out.println("Servidor: Formato de mensaje inválido");
-        out.println("ERROR: Formato inválido");
-        return false;
-    }
-
-    private void manejarComandos() throws IOException {
-        String mensaje;
-        while (running && (mensaje = in.readLine()) != null) {
-            System.out.println("Servidor recibió: [" + mensaje + "]");
-            if (mensaje.startsWith("CONSULTAR_SALDO")) {
-                manejarConsultaSaldo(mensaje);
-            } else if (mensaje.startsWith("CONSIGNAR")) {
-                manejarConsignacion(mensaje);
+            boolean exito = consultas.realizarConsignacion(cuentaDestino, monto);
+            if (exito) {
+                out.println("CONSIGNACION_EXITOSA " + cuentaDestino + " $" + monto);
             } else {
-                System.out.println("Servidor: Comando no reconocido [" + mensaje + "]");
-                out.println("ERROR: Comando no reconocido.");
-                if (listener != null) {
-                    listener.mostrarMensaje("Comando no reconocido: " + mensaje);
-                }
+                out.println("ERROR: No se pudo realizar la consignación.");
             }
-        }
-    }
-
-    private void manejarConsultaSaldo(String mensaje) {
-        String numeroCuenta = mensaje.replaceFirst("CONSULTAR_SALDO\\s+", "").trim();
-        if (!numeroCuenta.isEmpty()) {
-            System.out.println("Servidor: Ejecutando consulta para la cuenta " + numeroCuenta);
-            String respuesta = consultas.consultarSaldo(numeroCuenta);
-            System.out.println("Servidor responde: [" + respuesta + "]");
-
-            out.println("SALDO_OK " + respuesta);
-        } else {
-            System.out.println("Servidor: Número de cuenta no válido");
-            out.println("ERROR: Número de cuenta inválido.");
-        }
-    }
-
-    private void manejarConsignacion(String mensaje) {
-        String[] partes = mensaje.split("\\s+");
-        if (partes.length != 3) {
-            out.println("ERROR: Formato de consignación inválido.");
-            return;
-        }
-        String cuentaDestino = partes[1];
-        double monto;
-        try {
-            monto = Double.parseDouble(partes[2]);
-        } catch (NumberFormatException e) {
-            out.println("ERROR: Monto inválido.");
-            return;
-        }
-        System.out.println("Servidor: Procesando consignación a " + cuentaDestino + " por $" + monto);
-        boolean exito = consultas.realizarConsignacion(cuentaDestino, monto);
-        if (exito) {
-            out.println("CONSIGNACION_EXITOSA " + cuentaDestino + " $" + monto);
-        } else {
-            out.println("ERROR: No se pudo realizar la consignación.");
         }
     }
 }

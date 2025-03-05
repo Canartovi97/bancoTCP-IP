@@ -44,29 +44,8 @@ public class Controlador {
         servidor.detenerServidor();
     }
 
-    public void agregarCliente() {
-        String cliente = "Cliente " + contadorClientes++;
-        clientesConectados.add(cliente);
 
-        if (vista != null) {
-            vista.actualizarListaClientes(clientesConectados);
-        } else {
-            System.out.println("Cliente conectado: " + cliente);
-        }
-    }
 
-    public void eliminarCliente(String cliente) {
-        clientesConectados.remove(cliente);
 
-        if (vista != null) {
-            vista.actualizarListaClientes(clientesConectados);
-        } else {
-            System.out.println("Cliente desconectado: " + cliente);
-        }
-    }
 
-    public void iniciarServidorHeadless() {
-        System.out.println("Iniciando servidor en modo headless...");
-        servidor.iniciarServidor();
-    }
 }

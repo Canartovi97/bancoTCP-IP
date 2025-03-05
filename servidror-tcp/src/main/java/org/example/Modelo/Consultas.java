@@ -12,6 +12,7 @@ public class Consultas {
         this.baseDatos = new BaseDatos();
     }
 
+
     public boolean verificarCredenciales(String username, String password) {
         String query = "SELECT * FROM Usuarios WHERE username = ? AND password = ?";
 
@@ -21,78 +22,91 @@ public class Consultas {
             stmt.setString(1, username);
             stmt.setString(2, password);
 
-            System.out.println("Ejecutando consulta SQL: " + query);
-            System.out.println("Parámetros: Usuario=" + username + ", Password=" + password);
+            System.out.println("[Consultas] Ejecutando: " + query);
+            System.out.println("[Consultas] Parámetros -> Usuario=" + username + ", Password=" + password);
 
             ResultSet rs = stmt.executeQuery();
-
             if (rs.next()) {
-                System.out.println("Usuario autenticado correctamente: " + username);
+                System.out.println("[Consultas] Usuario autenticado: " + username);
                 return true;
             } else {
-                System.out.println("Error: Credenciales incorrectas para usuario: " + username);
+                System.out.println("[Consultas] Credenciales incorrectas para usuario: " + username);
                 return false;
             }
 
         } catch (SQLException e) {
-            System.out.println("Error en la consulta de login: " + e.getMessage());
+            System.out.println("[Consultas] Error en la consulta de login: " + e.getMessage());
             return false;
         }
     }
 
 
-    public String[] obtenerDatosUsuario(String username, String password) {
-        String query = "SELECT u.id_usuario, c.numero_cuenta " +
-                "FROM Usuarios u " +
-                "INNER JOIN Cuentas c ON u.id_persona = c.id_persona " +
-                "WHERE u.username = ? AND u.password = ? LIMIT 1";
 
-        try (Connection conn = baseDatos.conectar();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
 
-            stmt.setString(1, username);
-            stmt.setString(2, password);
-
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                String idUsuario = rs.getString("id_usuario");
-                String numeroCuenta = rs.getString("numero_cuenta");
-                return new String[]{idUsuario, numeroCuenta};
-            }
-        } catch (SQLException e) {
-            System.out.println("Error al obtener datos del usuario: " + e.getMessage());
+    public String consultarSaldo(String username, String tipo, String valor) {
+        if (tipo.equalsIgnoreCase("CUENTA")) {
+            return consultarSaldoPorCuenta(username, valor);
+        } else if (tipo.equalsIgnoreCase("CEDULA")) {
+            return consultarSaldoPorCedula(username, valor);
+        } else {
+            return "ERROR: Tipo de consulta inválido.";
         }
-        return null;
     }
 
-
-
-    public String consultarSaldo(String numeroCuenta) {
-        String query = "SELECT numero_cuenta, saldo FROM Cuentas WHERE numero_cuenta = ?";
+    private String consultarSaldoPorCuenta(String username, String numeroCuenta) {
+        String query = "SELECT c.saldo FROM Cuentas c " +
+                "INNER JOIN Usuarios u ON c.id_persona = u.id_persona " +
+                "WHERE u.username = ? AND c.numero_cuenta = ?";
 
         try (Connection conn = baseDatos.conectar();
              PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, username);
+            stmt.setString(2, numeroCuenta);
 
-            stmt.setString(1, numeroCuenta);
-            System.out.println("Ejecutando consulta: " + query);
-            System.out.println("Parametros -> Cuenta: " + numeroCuenta);
             ResultSet rs = stmt.executeQuery();
-
             if (rs.next()) {
+                double saldo = rs.getDouble("saldo");
+                return "Saldo disponible: $" + saldo;
+            } else {
+                return "ERROR: No se encontró la cuenta o no pertenece al usuario.";
+            }
+        } catch (SQLException e) {
+            return "ERROR en la consulta de saldo: " + e.getMessage();
+        }
+    }
+
+    private String consultarSaldoPorCedula(String username, String documento) {
+        String query = "SELECT c.numero_cuenta, c.saldo FROM Cuentas c " +
+                "INNER JOIN Personas p ON c.id_persona = p.id_persona " +
+                "INNER JOIN Usuarios u ON p.id_persona = u.id_persona " +
+                "WHERE u.username = ? AND p.documento = ?";
+
+        StringBuilder resultado = new StringBuilder("Cuentas y saldos:\n");
+        try (Connection conn = baseDatos.conectar();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, username);
+            stmt.setString(2, documento);
+
+            ResultSet rs = stmt.executeQuery();
+            boolean encontrado = false;
+            while (rs.next()) {
+                encontrado = true;
                 String cuenta = rs.getString("numero_cuenta");
                 double saldo = rs.getDouble("saldo");
-                return "Cuenta: " + cuenta + " - Saldo: $" + saldo;
-            } else {
-                return "Error: No se encontró ninguna cuenta con ese número.";
+                resultado.append("Cuenta: ").append(cuenta).append(" - Saldo: $").append(saldo).append("\n");
             }
+            return encontrado ? resultado.toString() : "ERROR: No se encontraron cuentas para este documento.";
         } catch (SQLException e) {
-            return "Error en la consulta de saldo: " + e.getMessage();
+            return "ERROR en la consulta de saldo: " + e.getMessage();
         }
     }
 
 
 
+    /**
+     * Realiza una consignación a la cuentaDestino incrementando su saldo.
+     * Retorna true si se actualizó exitosamente, false si no existe la cuenta.
+     */
     public boolean realizarConsignacion(String cuentaDestino, double monto) {
         String query = "UPDATE Cuentas SET saldo = saldo + ? WHERE numero_cuenta = ?";
 
@@ -103,20 +117,16 @@ public class Consultas {
             stmt.setString(2, cuentaDestino);
 
             int filasAfectadas = stmt.executeUpdate();
-
             if (filasAfectadas > 0) {
-                System.out.println("Servidor: Consignación exitosa en cuenta " + cuentaDestino);
+                System.out.println("[Consultas] Consignación exitosa en cuenta: " + cuentaDestino);
                 return true;
             } else {
-                System.out.println("Servidor: No se encontró la cuenta " + cuentaDestino);
+                System.out.println("[Consultas] No se encontró la cuenta: " + cuentaDestino);
                 return false;
             }
         } catch (SQLException e) {
-            System.out.println("Error en la consignación: " + e.getMessage());
+            System.out.println("[Consultas] Error en la consignación: " + e.getMessage());
             return false;
         }
     }
-
-
-
 }
