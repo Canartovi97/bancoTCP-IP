@@ -126,10 +126,10 @@ public class Servidor {
 
 
 
-    /*actualizar la lista de clientes conectados*/
+
 
     public synchronized void actualizarListaClientes() {
-        List<String> usuariosAutenticados = new ArrayList<>(autenticados); // Copia de la lista de autenticados
+        List<String> usuariosAutenticados = new ArrayList<>(autenticados);
         if (listener != null) {
             listener.actualizarListaClientes(usuariosAutenticados);
         }

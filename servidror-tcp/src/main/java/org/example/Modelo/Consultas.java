@@ -43,8 +43,6 @@ public class Consultas {
     }
 
 
-
-
     public String consultarSaldo(String username, String tipo, String valor) {
         if (tipo.equalsIgnoreCase("CUENTA")) {
             return consultarSaldoPorCuenta(username, valor);
@@ -132,9 +130,6 @@ public class Consultas {
     }
 
 
-
-
-
     public boolean realizarConsignacion(String cuentaOrigen, String cuentaDestino, double monto) {
         String queryObtenerIdCuenta = "SELECT id_cuenta FROM Cuentas WHERE numero_cuenta = ?";
         String queryInsertarMovimiento = "INSERT INTO movimientos (fecha_hora, monto, descripcion, id_cuenta_origen, id_cuenta_destino) VALUES (NOW(), ?, 'Consignación', ?, ?)";
@@ -146,17 +141,17 @@ public class Consultas {
 
             conn.setAutoCommit(false);
 
-            // Obtener ID de la cuenta origen
+
             stmtObtenerIdOrigen.setString(1, cuentaOrigen);
             ResultSet rsOrigen = stmtObtenerIdOrigen.executeQuery();
             Integer idCuentaOrigen = rsOrigen.next() ? rsOrigen.getInt("id_cuenta") : null;
 
-            // Obtener ID de la cuenta destino
+
             stmtObtenerIdDestino.setString(1, cuentaDestino);
             ResultSet rsDestino = stmtObtenerIdDestino.executeQuery();
             Integer idCuentaDestino = rsDestino.next() ? rsDestino.getInt("id_cuenta") : null;
 
-            // Verificar si ambas cuentas existen
+
             if (idCuentaOrigen == null || idCuentaDestino == null) {
                 System.out.println("[Consultas] ERROR: Una de las cuentas no existe.");
                 return false;
@@ -178,7 +173,34 @@ public class Consultas {
     }
 
 
+    private String obtenerMovimientos(String numeroCuenta) {
+        String query = "SELECT id_movimiento, fecha_hora, monto, descripcion, id_cuenta_origen, id_cuenta_destino " +
+                "FROM movimientos WHERE id_cuenta_origen = ? OR id_cuenta_destino = ? ORDER BY fecha_hora DESC";
 
+        StringBuilder resultado = new StringBuilder();
+
+        try (Connection conn = baseDatos.conectar();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, Integer.parseInt(numeroCuenta)); // Convertimos a int si la BD lo requiere
+            stmt.setInt(2, Integer.parseInt(numeroCuenta));
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                resultado.append(rs.getInt("id_movimiento")).append(" | ")
+                        .append(rs.getTimestamp("fecha_hora")).append(" | ")
+                        .append(rs.getDouble("monto")).append(" | ")
+                        .append(rs.getString("descripcion")).append(" | ")
+                        .append(rs.getInt("id_cuenta_origen")).append(" -> ")
+                        .append(rs.getInt("id_cuenta_destino")).append("\n");
+            }
+
+        } catch (SQLException e) {
+            return "ERROR en la consulta de movimientos: " + e.getMessage();
+        }
+
+        return resultado.toString();
+    }
 
 
 }

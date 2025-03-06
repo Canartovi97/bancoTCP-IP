@@ -101,6 +101,8 @@ public class ClientHandler extends Thread {
                 manejarConsultaSaldo(linea);
             } else if (linea.startsWith("CONSIGNAR")) {
                 manejarConsignacion(linea);
+            }else if (linea.startsWith("CONSULTAR_MOVIMIENTOS")) {
+                manejarConsultaMovimientos(linea);
             } else if (linea.equals("PING")) {
                 out.println("PONG");
             }else if (linea.startsWith("OBTENER_CUENTAS")) {
@@ -175,5 +177,23 @@ public class ClientHandler extends Thread {
             out.println(String.join(" ", cuentas)); // Responde con "1000001 1000002"
         }
     }
+
+    private void manejarConsultaMovimientos(String mensaje) {
+        String[] partes = mensaje.trim().split("\\s+");
+        if (partes.length != 2) {
+            out.println("ERROR: Formato inválido. Use: CONSULTAR_MOVIMIENTOS <numero_cuenta>");
+            return;
+        }
+
+        String numeroCuenta = partes[1];
+        List<String> movimientos = consultas.obtenerMovimientos(numeroCuenta);
+
+        if (movimientos.isEmpty()) {
+            out.println("ERROR: No hay movimientos para esta cuenta.");
+        } else {
+            out.println(String.join("\n", movimientos));
+        }
+    }
+
 
 }
