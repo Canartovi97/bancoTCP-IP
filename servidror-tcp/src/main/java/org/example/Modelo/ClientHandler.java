@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.util.List;
 
 public class ClientHandler extends Thread {
+    private final Servidor servidor;
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
@@ -15,7 +16,8 @@ public class ClientHandler extends Thread {
     private List<String> autenticados;
     private volatile boolean running = true;
 
-    public ClientHandler(Socket socket, Listener listener, String clienteNombre, Consultas consultas, List<String> autenticados) {
+    public ClientHandler(Servidor servidor,Socket socket, Listener listener, String clienteNombre, Consultas consultas, List<String> autenticados) {
+        this.servidor = servidor;
         this.socket = socket;
         this.listener = listener;
         this.clienteNombre = clienteNombre;
@@ -44,6 +46,11 @@ public class ClientHandler extends Thread {
             if (socket != null && !socket.isClosed()) {
                 socket.close();
             }
+
+            autenticados.remove(clienteNombre);
+            servidor.actualizarListaClientes();
+
+
         } catch (IOException ignored) {}
     }
 
@@ -70,8 +77,11 @@ public class ClientHandler extends Thread {
             boolean ok = consultas.verificarCredenciales(user, pass);
             if (ok) {
                 autenticados.add(user);
+                clienteNombre = user;
                 System.out.println("Usuario autenticado: " + user);
                 out.println("LOGIN_EXITO");
+
+                servidor.actualizarListaClientes();
             } else {
                 System.out.println("[ClientHandler] Credenciales incorrectas: " + user);
                 out.println("LOGIN_FALLIDO");
@@ -93,6 +103,8 @@ public class ClientHandler extends Thread {
                 manejarConsignacion(linea);
             } else if (linea.equals("PING")) {
                 out.println("PONG");
+            }else if (linea.startsWith("OBTENER_CUENTAS")) {
+                manejarObtenerCuentas(linea);
             } else {
                 System.out.println("[ClientHandler] Comando no reconocido: [" + linea + "]");
                 out.println("ERROR: Comando no reconocido.");
@@ -123,23 +135,45 @@ public class ClientHandler extends Thread {
 
     private void manejarConsignacion(String linea) {
         String[] partes = linea.trim().split("\\s+");
-        if (partes.length != 3) {
-            out.println("ERROR: Formato consignación inválido. Use: CONSIGNAR <cuenta> <monto>");
+        if (partes.length != 4) {
+            out.println("ERROR: Formato inválido. Use: CONSIGNAR <cuenta_origen> <cuenta_destino> <monto>");
             return;
         }
-        String cuentaDestino = partes[1];
+
+        String cuentaOrigen = partes[1];
+        String cuentaDestino = partes[2];
         double monto;
         try {
-            monto = Double.parseDouble(partes[2]);
+            monto = Double.parseDouble(partes[3]);
         } catch (NumberFormatException e) {
             out.println("ERROR: Monto inválido.");
             return;
         }
-        boolean exito = consultas.realizarConsignacion(cuentaDestino, monto);
+
+        boolean exito = consultas.realizarConsignacion(cuentaOrigen, cuentaDestino, monto);
         if (exito) {
-            out.println("CONSIGNACION_EXITOSA " + cuentaDestino + " $" + monto);
+            out.println("CONSIGNACION_EXITOSA " + cuentaOrigen + " → " + cuentaDestino + " $" + monto);
         } else {
             out.println("ERROR: No se pudo realizar la consignación.");
         }
     }
+
+
+    private void manejarObtenerCuentas(String mensaje) {
+        String[] partes = mensaje.trim().split("\\s+");
+        if (partes.length != 2) {
+            out.println("ERROR: Formato inválido. Use: OBTENER_CUENTAS <username>");
+            return;
+        }
+
+        String username = partes[1];
+        List<String> cuentas = consultas.obtenerCuentasPorUsuario(username);
+
+        if (cuentas.isEmpty()) {
+            out.println("ERROR: No se encontraron cuentas asociadas.");
+        } else {
+            out.println(String.join(" ", cuentas)); // Responde con "1000001 1000002"
+        }
+    }
+
 }

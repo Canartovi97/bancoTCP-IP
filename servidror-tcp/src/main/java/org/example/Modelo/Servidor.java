@@ -34,27 +34,7 @@ public class Servidor {
         this.pingHandlers = new ArrayList<>();
     }
 
-    /*public void iniciarServidor() {
-        new Thread(() -> {
-            try {
-                serverSocket = new ServerSocket(PORT);
-                running = true;
-                System.out.println("Servidor TCP en ejecución en puerto " + PORT);
 
-                while (running) {
-                    Socket clientSocket = serverSocket.accept();
-                    String clienteNombre = "Cliente-" + (clientHandlers.size() + 1);
-                    clientesConectados.add(clienteNombre);
-
-                    ClientHandler clientHandler = new ClientHandler(clientSocket, listener, clienteNombre, consultas, autenticados);
-                    clientHandlers.add(clientHandler);
-                    clientHandler.start();
-                }
-            } catch (IOException e) {
-                System.err.println("Error en el servidor: " + e.getMessage());
-            }
-        }).start();
-    }*/
 
     public void iniciarServidor() {
         new Thread(() -> {
@@ -69,7 +49,7 @@ public class Servidor {
                     System.out.println("Servidor TCP en ejecución en puerto " + PORT);
                 }
 
-                // **Hilo para aceptar conexiones normales**
+
                 new Thread(() -> {
                     while (running) {
                         try {
@@ -77,14 +57,14 @@ public class Servidor {
                             String clienteNombre = "Cliente-" + (clientHandlers.size() + 1);
                             clientesConectados.add(clienteNombre);
 
-                            ClientHandler clientHandler = new ClientHandler(clientSocket, listener, clienteNombre, consultas, autenticados);
+                            ClientHandler clientHandler = new ClientHandler(this, clientSocket, listener, clienteNombre, consultas, autenticados);
                             clientHandlers.add(clientHandler);
                             clientHandler.start();
                         } catch (IOException ignored) {}
                     }
                 }).start();
 
-                // **Hilo para aceptar conexiones de PING**
+
                 new Thread(() -> {
                     while (running) {
                         try {
@@ -141,6 +121,17 @@ public class Servidor {
             System.out.println("Servidor detenido.");
         } catch (IOException e) {
             System.err.println("Error al detener el servidor: " + e.getMessage());
+        }
+    }
+
+
+
+    /*actualizar la lista de clientes conectados*/
+
+    public synchronized void actualizarListaClientes() {
+        List<String> usuariosAutenticados = new ArrayList<>(autenticados); // Copia de la lista de autenticados
+        if (listener != null) {
+            listener.actualizarListaClientes(usuariosAutenticados);
         }
     }
 

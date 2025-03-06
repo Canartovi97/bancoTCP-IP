@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Consultas {
     private BaseDatos baseDatos;
@@ -109,33 +111,74 @@ public class Consultas {
     }
 
 
+    public List<String> obtenerCuentasPorUsuario(String username) {
+        String query = "SELECT c.numero_cuenta FROM Cuentas c " +
+                "INNER JOIN Usuarios u ON c.id_persona = u.id_persona " +
+                "WHERE u.username = ?";
 
-
-
-    /**
-     * Realiza una consignación a la cuentaDestino incrementando su saldo.
-     * Retorna true si se actualizó exitosamente, false si no existe la cuenta.
-     */
-    public boolean realizarConsignacion(String cuentaDestino, double monto) {
-        String query = "UPDATE Cuentas SET saldo = saldo + ? WHERE numero_cuenta = ?";
-
+        List<String> cuentas = new ArrayList<>();
         try (Connection conn = baseDatos.conectar();
              PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, username);
 
-            stmt.setDouble(1, monto);
-            stmt.setString(2, cuentaDestino);
-
-            int filasAfectadas = stmt.executeUpdate();
-            if (filasAfectadas > 0) {
-                System.out.println("[Consultas] Consignación exitosa en cuenta: " + cuentaDestino);
-                return true;
-            } else {
-                System.out.println("[Consultas] No se encontró la cuenta: " + cuentaDestino);
-                return false;
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                cuentas.add(rs.getString("numero_cuenta"));
             }
         } catch (SQLException e) {
-            System.out.println("[Consultas] Error en la consignación: " + e.getMessage());
+            System.out.println("[Consultas] Error al obtener cuentas: " + e.getMessage());
+        }
+        return cuentas;
+    }
+
+
+
+
+
+    public boolean realizarConsignacion(String cuentaOrigen, String cuentaDestino, double monto) {
+        String queryObtenerIdCuenta = "SELECT id_cuenta FROM Cuentas WHERE numero_cuenta = ?";
+        String queryInsertarMovimiento = "INSERT INTO movimientos (fecha_hora, monto, descripcion, id_cuenta_origen, id_cuenta_destino) VALUES (NOW(), ?, 'Consignación', ?, ?)";
+
+        try (Connection conn = baseDatos.conectar();
+             PreparedStatement stmtObtenerIdOrigen = conn.prepareStatement(queryObtenerIdCuenta);
+             PreparedStatement stmtObtenerIdDestino = conn.prepareStatement(queryObtenerIdCuenta);
+             PreparedStatement stmtMovimiento = conn.prepareStatement(queryInsertarMovimiento)) {
+
+            conn.setAutoCommit(false);
+
+            // Obtener ID de la cuenta origen
+            stmtObtenerIdOrigen.setString(1, cuentaOrigen);
+            ResultSet rsOrigen = stmtObtenerIdOrigen.executeQuery();
+            Integer idCuentaOrigen = rsOrigen.next() ? rsOrigen.getInt("id_cuenta") : null;
+
+            // Obtener ID de la cuenta destino
+            stmtObtenerIdDestino.setString(1, cuentaDestino);
+            ResultSet rsDestino = stmtObtenerIdDestino.executeQuery();
+            Integer idCuentaDestino = rsDestino.next() ? rsDestino.getInt("id_cuenta") : null;
+
+            // Verificar si ambas cuentas existen
+            if (idCuentaOrigen == null || idCuentaDestino == null) {
+                System.out.println("[Consultas] ERROR: Una de las cuentas no existe.");
+                return false;
+            }
+
+            // Registrar movimiento
+            stmtMovimiento.setDouble(1, monto);
+            stmtMovimiento.setInt(2, idCuentaOrigen);
+            stmtMovimiento.setInt(3, idCuentaDestino);
+            stmtMovimiento.executeUpdate();
+
+            conn.commit();
+            return true;
+
+        } catch (SQLException e) {
+            System.out.println("[Consultas] ERROR en la consignación: " + e.getMessage());
             return false;
         }
     }
+
+
+
+
+
 }

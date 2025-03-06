@@ -28,7 +28,7 @@ public class Vista extends JFrame implements Listener {
         //jButton2 = new JButton("Iniciar");
         jButton3 = new JButton("Apagar");
         jLabel1 = new JLabel("Servidor Banco TCP/IP", SwingConstants.CENTER);
-        jLabel2 = new JLabel("Dispositivos Conectados");
+        jLabel2 = new JLabel("Usuarios Conectados");
         jLabel3 = new JLabel("Mensajes");
         
         jTextArea2 = new JTextArea(10, 30);
@@ -56,11 +56,7 @@ public class Vista extends JFrame implements Listener {
         add(jScrollPane1);
         add(jScrollPane2);
         
-        //jButton2.addActionListener(new ActionListener() {
-            //public void actionPerformed(ActionEvent evt) {
-                //if (controlador != null) controlador.iniciarServidor();
-            //}
-        //});
+
 
         jButton3.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
