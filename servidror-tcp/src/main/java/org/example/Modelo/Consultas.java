@@ -173,7 +173,7 @@ public class Consultas {
     }
 
 
-    private String obtenerMovimientos(String numeroCuenta) {
+    public String obtenerMovimientos(String numeroCuenta) {
         String query = "SELECT id_movimiento, fecha_hora, monto, descripcion, id_cuenta_origen, id_cuenta_destino " +
                 "FROM movimientos WHERE id_cuenta_origen = ? OR id_cuenta_destino = ? ORDER BY fecha_hora DESC";
 
@@ -181,7 +181,8 @@ public class Consultas {
 
         try (Connection conn = baseDatos.conectar();
              PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setInt(1, Integer.parseInt(numeroCuenta)); // Convertimos a int si la BD lo requiere
+
+            stmt.setInt(1, Integer.parseInt(numeroCuenta));
             stmt.setInt(2, Integer.parseInt(numeroCuenta));
 
             ResultSet rs = stmt.executeQuery();
@@ -198,6 +199,8 @@ public class Consultas {
         } catch (SQLException e) {
             return "ERROR en la consulta de movimientos: " + e.getMessage();
         }
+
+        System.out.println("Esta es la respuesta de movimientos " + resultado.toString());
 
         return resultado.toString();
     }

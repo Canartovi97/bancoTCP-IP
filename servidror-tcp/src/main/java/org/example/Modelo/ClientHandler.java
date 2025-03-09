@@ -3,6 +3,7 @@ package org.example.Modelo;
 import org.example.Vista.Listener;
 import java.io.*;
 import java.net.Socket;
+import java.util.Collections;
 import java.util.List;
 
 public class ClientHandler extends Thread {
@@ -174,24 +175,25 @@ public class ClientHandler extends Thread {
         if (cuentas.isEmpty()) {
             out.println("ERROR: No se encontraron cuentas asociadas.");
         } else {
-            out.println(String.join(" ", cuentas)); // Responde con "1000001 1000002"
+            out.println(String.join(" ", cuentas));
         }
     }
 
     private void manejarConsultaMovimientos(String mensaje) {
         String[] partes = mensaje.trim().split("\\s+");
         if (partes.length != 2) {
-            out.println("ERROR: Formato inválido. Use: CONSULTAR_MOVIMIENTOS <numero_cuenta>");
+            out.println("ERROR: Formato inválido. Use: CONSULTAR_MOVIMIENTOS <numeroCuenta>");
             return;
         }
 
         String numeroCuenta = partes[1];
-        List<String> movimientos = consultas.obtenerMovimientos(numeroCuenta);
+        List<String> movimientos = Collections.singletonList(consultas.obtenerMovimientos(numeroCuenta));
 
         if (movimientos.isEmpty()) {
-            out.println("ERROR: No hay movimientos para esta cuenta.");
+            out.println("ERROR: No se encontraron movimientos para la cuenta " + numeroCuenta);
         } else {
-            out.println(String.join("\n", movimientos));
+            System.out.println("Respueta de movimientos " + movimientos);
+            out.println(String.join(" | ", movimientos));
         }
     }
 
