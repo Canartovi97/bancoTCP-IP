@@ -13,9 +13,17 @@ import java.util.*;
 public class Servidor {
     private ServerSocket serverSocket;
     private ServerSocket pingServerSocket;
-    private boolean running;
+
     private final int PORT = 12345;
     private final int PING_PORT = 12346;
+
+    private boolean running;
+    private int puertoAsignado;
+    private static final String BALANCEADOR_IP = "127.0.0.1";
+    private static final int BALANCEADOR_PUERTO = 5000;
+
+
+
 
 
     private Listener listener;
@@ -31,55 +39,63 @@ public class Servidor {
         this.clientesConectados = new ArrayList<>();
         this.consultas = new Consultas();
         this.clientHandlers = new ArrayList<>();
-        this.pingHandlers = new ArrayList<>();
     }
 
 
 
     public void iniciarServidor() {
+        registrarConBalanceador();
+
+        if (puertoAsignado == -1) {
+            System.out.println("No se pudo obtener un puerto del balanceador. Cerrando servidor.");
+            return;
+        }
+
         new Thread(() -> {
             try {
-                serverSocket = new ServerSocket(PORT);
-                pingServerSocket = new ServerSocket(PING_PORT);  // **Iniciar socket de PING**
+                serverSocket = new ServerSocket(puertoAsignado);
                 running = true;
+                System.out.println("Servidor Banco escuchando en el puerto " + puertoAsignado);
 
-                if (listener != null) {
-                    listener.mostrarMensaje("Servidor TCP en ejecución en puerto " + PORT);
-                } else {
-                    System.out.println("Servidor TCP en ejecución en puerto " + PORT);
+                while (running) {
+                    Socket clientSocket = serverSocket.accept();
+                    String clienteNombre = "Cliente-" + (clientHandlers.size() + 1);
+                    clientesConectados.add(clienteNombre);
+
+                    ClientHandler clientHandler = new ClientHandler(this, clientSocket, listener, clienteNombre, consultas, autenticados);
+                    clientHandlers.add(clientHandler);
+                    clientHandler.start();
                 }
-
-
-                new Thread(() -> {
-                    while (running) {
-                        try {
-                            Socket clientSocket = serverSocket.accept();
-                            String clienteNombre = "Cliente-" + (clientHandlers.size() + 1);
-                            clientesConectados.add(clienteNombre);
-
-                            ClientHandler clientHandler = new ClientHandler(this, clientSocket, listener, clienteNombre, consultas, autenticados);
-                            clientHandlers.add(clientHandler);
-                            clientHandler.start();
-                        } catch (IOException ignored) {}
-                    }
-                }).start();
-
-
-                new Thread(() -> {
-                    while (running) {
-                        try {
-                            Socket pingSocket = pingServerSocket.accept();
-                            PingHandler pingHandler = new PingHandler(pingSocket);
-                            pingHandlers.add(pingHandler);
-                            pingHandler.start();
-                        } catch (IOException ignored) {}
-                    }
-                }).start();
             } catch (IOException e) {
                 System.err.println("Error en el servidor: " + e.getMessage());
             }
         }).start();
     }
+
+    private void registrarConBalanceador() {
+        try (Socket socket = new Socket(BALANCEADOR_IP, BALANCEADOR_PUERTO);
+             BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             PrintWriter salida = new PrintWriter(socket.getOutputStream(), true)) {
+
+            System.out.println("[Servidor] Conectado al balanceador, esperando IP...");
+            String respuesta = entrada.readLine();
+
+            if (respuesta != null && respuesta.matches("\\d+")) {
+                puertoAsignado = Integer.parseInt(respuesta);
+                System.out.println("[Servidor] IP asignada por el balanceador: " + puertoAsignado);
+            } else {
+                System.out.println("[Servidor] Error: No se recibió una IP válida del balanceador.");
+                puertoAsignado = -1;
+            }
+
+        } catch (IOException e) {
+            System.out.println("[Servidor] Error al conectar con el balanceador: " + e.getMessage());
+            puertoAsignado = -1;
+        }
+    }
+
+
+
 
     class PingHandler extends Thread {
         private Socket socket;
