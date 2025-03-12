@@ -10,8 +10,11 @@ public class Main {
 
         java.awt.EventQueue.invokeLater(() -> {
             Vista vista = new Vista();
-            Servidor servidor = new Servidor(vista);
-            org.example.Controlador.Controlador controlador = new Controlador(vista, servidor);
+            Controlador controlador = new Controlador(vista, null);
+            Servidor servidor = new Servidor(vista, controlador);
+
+            controlador.setServidor(servidor);
+
             vista.setControlador(controlador);
             vista.setVisible(true);
 

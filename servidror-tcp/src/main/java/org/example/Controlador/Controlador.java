@@ -27,7 +27,7 @@ public class Controlador {
         if (vista != null) {
             vista.mostrarMensaje("Iniciando servidor...");
         } else {
-            System.out.println("Iniciando servidor...");
+            System.out.println("Iniciando servidor asdasd...");
         }
         servidor.iniciarServidor();
     }
@@ -45,6 +45,17 @@ public class Controlador {
     }
 
 
+    public void notificarPuerto(int puerto) {
+        if (vista != null) {
+            vista.mostrarMensaje("Servidor iniciado en el puerto " + puerto);
+        } else {
+            System.out.println("Servidor iniciado en el puerto " + puerto);
+        }
+    }
+
+    public void setServidor(Servidor servidor) {
+        this.servidor = servidor;
+    }
 
 
 

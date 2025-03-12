@@ -93,6 +93,8 @@ public class ClientHandler extends Thread {
         }
     }
 
+
+
     private void manejarComandos() throws IOException {
         String linea;
         while (running && (linea = in.readLine()) != null) {
